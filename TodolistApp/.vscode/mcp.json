@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "firebase-mcp": {
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/firebase-mcp/build/index.mjs",
+        "${workspaceFolder}/TodolistApp/mytodolist-ce366-firebase-adminsdk-fbsvc-a60778d3da.json"
+      ]
+    }
+  }
+}
