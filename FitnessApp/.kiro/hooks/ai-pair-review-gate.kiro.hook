@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "AI-Pair Review Gate",
+  "description": "After each spec task completes, reviews the output from two perspectives: (1) Code Reviewer checking quality, constraints, and patterns; (2) Integration Reviewer checking API contracts and cross-agent compatibility. Inspired by the ai-pair \"one creates, two review\" pattern.",
+  "version": "1",
+  "when": {
+    "type": "postTaskExecution"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "You are now acting as TWO reviewers for the just-completed task. Review the files that were created/modified from two perspectives:\n\n**Reviewer 1 — \"Code Quality Auditor\":**\n- Check for force unwraps (!) in production code\n- Verify all @Published properties are on @MainActor\n- Confirm no iOS 17+ APIs are used (target is 16.4)\n- Check error handling uses throws/Result (no silent failures)\n- Verify file naming conventions match project standards\n\n**Reviewer 2 — \"Integration Architect\":**\n- Check that public APIs match the contracts defined in design.md\n- Verify the code doesn't touch files outside its agent's SCOPE\n- Confirm dependency injection is used (init params with defaults)\n- Check that accessibility identifiers follow the \"{screen}-{element}\" pattern\n- Verify SHARED_STATE.md should be updated if a file is now stable\n\nIf issues are found, fix them immediately. If the code passes both reviews, note \"✅ Review passed\" and continue."
+  }
+}
