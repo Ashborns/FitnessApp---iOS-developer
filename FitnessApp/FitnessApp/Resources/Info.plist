@@ -26,6 +26,8 @@
 	<string>FitnessApp saves workout sessions to Apple Health to keep your data in sync.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>FitnessApp uses motion data to enhance workout tracking accuracy.</string>
+	<key>DeepSeekAPIKey</key>
+	<string>sk-37c4ac6218ed4c0295448b0deb8fc7ac</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

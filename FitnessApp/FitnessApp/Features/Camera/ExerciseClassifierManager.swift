@@ -7,14 +7,11 @@ import Foundation
 // Integrates the custom-trained ExerciseClassifier.mlmodel into the camera pipeline.
 //
 // MODEL STATUS:
-//   ⏳ Pending — ExerciseClassifier.mlmodel must be trained and added to the project.
-//   See MLModel/README.md for training instructions.
+//   ✅ Active — ExerciseClassifier.mlmodel is used as a secondary validation layer.
+//   Primary rep counting remains rule-based via Apple Vision + ExerciseDetector.
 //
-// WHEN MODEL IS READY:
-//   1. Drag ExerciseClassifier.mlmodel into Xcode (FitnessApp/ folder)
-//   2. Check "Add to target: FitnessApp"
-//   3. Set `isModelAvailable = true` below
-//   4. Uncomment the model loading and prediction code
+// NOTE: The model was trained on synthetic data and is less accurate than Apple Vision.
+// It serves as a supplementary tool for exercise classification, not the primary source.
 
 @MainActor
 final class ExerciseClassifierManager: ObservableObject {
@@ -37,7 +34,7 @@ final class ExerciseClassifierManager: ObservableObject {
     // MARK: - Configuration
 
     /// Set to true after adding ExerciseClassifier.mlmodel to the Xcode project.
-    private let isModelAvailable: Bool = false
+    private let isModelAvailable: Bool = true
 
     /// Number of frames the model analyzes per prediction.
     /// Must match the "Prediction Window" used during Create ML training.
@@ -48,8 +45,9 @@ final class ExerciseClassifierManager: ObservableObject {
     /// Sliding window of recent pose observations fed to the model.
     private var poseWindow: [VNHumanBodyPoseObservation] = []
 
-    // MARK: - Model (uncomment after adding .mlmodel to project)
-    // private var model: ExerciseClassifier?
+    // MARK: - Model
+
+    private var model: ExerciseClassifier?
 
     // MARK: - Init
 
@@ -62,8 +60,6 @@ final class ExerciseClassifierManager: ObservableObject {
     // MARK: - Model Loading
 
     private func loadModel() {
-        // Uncomment after adding ExerciseClassifier.mlmodel:
-        /*
         do {
             let config = MLModelConfiguration()
             // Use Neural Engine for best performance on device
@@ -75,7 +71,6 @@ final class ExerciseClassifierManager: ObservableObject {
             isModelLoaded = false
             print("❌ Failed to load ExerciseClassifier: \(error)")
         }
-        */
     }
 
     // MARK: - Public API
@@ -122,32 +117,31 @@ final class ExerciseClassifierManager: ObservableObject {
     // MARK: - Inference
 
     private func runInference() {
-        // Uncomment after adding ExerciseClassifier.mlmodel:
-        /*
         guard let model = model else { return }
 
         do {
-            // Build MLMultiArray from the pose window
             let posesArray = try buildPoseArray(from: poseWindow)
             let input = ExerciseClassifierInput(poses: posesArray)
             let output = try model.prediction(input: input)
 
-            // Update published state on main actor
-            predictedLabel = output.label
-            confidence = output.labelProbabilities[output.label] ?? 0.0
+            // Use MLFeatureProvider to access outputs by name (avoids auto-generated type issues)
+            predictedLabel = output.featureValue(for: "label")?.stringValue ?? "rest"
+
+            if let probs = output.featureValue(for: "labelProbabilities")?.dictionaryValue as? [String: NSNumber] {
+                confidence = probs[predictedLabel]?.doubleValue ?? 0.0
+            }
 
         } catch {
             print("Inference error: \(error)")
         }
-        */
     }
 
     // MARK: - Pose Array Builder
 
     /// Converts a window of VNHumanBodyPoseObservation into an MLMultiArray
-    /// in the format expected by Create ML Action Classifier models.
+    /// in the format expected by the neural network classifier.
     ///
-    /// Shape: [windowSize, numJoints × 3]
+    /// Shape: [1, 1, windowSize × numJoints × 3] = [1, 1, 3240] (3D with batch + channel dims)
     /// Each joint contributes: x (normalized), y (normalized), confidence
     private func buildPoseArray(from window: [VNHumanBodyPoseObservation]) throws -> MLMultiArray {
         let jointNames: [VNHumanBodyPoseObservation.JointName] = [
@@ -165,7 +159,8 @@ final class ExerciseClassifierManager: ObservableObject {
 
         let numJoints = jointNames.count
         let featuresPerJoint = 3  // x, y, confidence
-        let shape = [window.count, numJoints * featuresPerJoint] as [NSNumber]
+        let flatSize = window.count * numJoints * featuresPerJoint  // 60 * 18 * 3 = 3240
+        let shape: [NSNumber] = [1, 1, NSNumber(value: flatSize)]
 
         let array = try MLMultiArray(shape: shape, dataType: .float32)
 
@@ -180,7 +175,6 @@ final class ExerciseClassifierManager: ObservableObject {
                     array[baseIdx + 1] = NSNumber(value: Float(point.location.y))
                     array[baseIdx + 2] = NSNumber(value: Float(point.confidence))
                 } else {
-                    // Zero-fill missing joints
                     array[baseIdx]     = 0
                     array[baseIdx + 1] = 0
                     array[baseIdx + 2] = 0

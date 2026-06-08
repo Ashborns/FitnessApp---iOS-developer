@@ -20,6 +20,9 @@ final class CameraViewModel: ObservableObject {
     // Camera position (front = selfie, back = rear)
     @Published var cameraPosition: AVCaptureDevice.Position = .front
 
+    // Frame position check result
+    @Published var frameCheckResult: FrameChecker.Result = .noBodyDetected
+
     // Workout summary (per exercise totals — saved on dismiss)
     @Published private(set) var sessionSummary: [ExerciseType: Int] = [:]
     @Published var workoutStartedAt: Date = Date()
@@ -49,15 +52,28 @@ final class CameraViewModel: ObservableObject {
                 // Feed to ML classifier (sliding window)
                 ExerciseClassifierManager.shared.addPose(observation)
 
-                // Rule-based rep counting (primary)
-                self.detector.process(
+                // Frame position check — higher priority than rep counting
+                let frameResult = FrameChecker.evaluate(
                     observation: observation,
-                    exercise: self.selectedExercise,
-                    state: &self.detectorState
+                    frameSize: CGSize(width: 720, height: 1280)
                 )
-                self.repCount = self.detectorState.repCount
-                self.phase = self.detectorState.phase
-                self.feedback = self.detectorState.feedback
+                self.frameCheckResult = frameResult
+
+                if frameResult.isReady {
+                    // Rule-based rep counting (primary)
+                    self.detector.process(
+                        observation: observation,
+                        exercise: self.selectedExercise,
+                        state: &self.detectorState
+                    )
+                    self.repCount = self.detectorState.repCount
+                    self.phase = self.detectorState.phase
+                    self.feedback = self.detectorState.feedback
+                } else {
+                    // Override feedback with position guidance
+                    self.feedback = frameResult.feedbackMessage
+                    self.phase = "Stand by"
+                }
 
                 // Haptic feedback when a new rep is counted
                 if self.repCount > prevCount {
@@ -88,6 +104,9 @@ final class CameraViewModel: ObservableObject {
         repCount = 0
         phase = "Ready"
         feedback = "Stand in frame to begin"
+        frameCheckResult = .noBodyDetected
+        // Clear ML classifier sliding window when switching exercises
+        ExerciseClassifierManager.shared.reset()
     }
 
     /// Full reset — wipes session summary, counter, and starts a fresh workout.
@@ -99,6 +118,7 @@ final class CameraViewModel: ObservableObject {
         feedback = "Stand in frame to begin"
         sessionSummary = [:]
         workoutStartedAt = Date()
+        frameCheckResult = .noBodyDetected
     }
 
     /// Commit the current exercise's rep count into the session summary.

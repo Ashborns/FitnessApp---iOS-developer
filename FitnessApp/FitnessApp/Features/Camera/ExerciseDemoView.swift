@@ -12,16 +12,30 @@ struct ExerciseDemoView: View {
 
     var body: some View {
         ZStack {
-            // Dimmed background
+            // Dimmed background — tap to skip and start directly
             Color.black.opacity(0.85)
                 .ignoresSafeArea()
-                .onTapGesture { onCancel() }
+                .onTapGesture { onStart() }
 
-            VStack(spacing: 24) {
+            VStack(spacing: 20) {
+                // Close button (top-right)
+                HStack {
+                    Spacer()
+                    Button(action: onCancel) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundColor(.white.opacity(0.6))
+                    }
+                    .accessibilityLabel("Close demo")
+                    .accessibilityIdentifier("demo-close-btn")
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+
                 Spacer()
 
                 // Header
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     HStack(spacing: 6) {
                         Image(systemName: exercise.icon)
                             .font(.caption)
@@ -37,12 +51,12 @@ struct ExerciseDemoView: View {
                         .foregroundColor(.white)
                 }
 
-                // Animated stick figure demo
+                // Animated stick figure demo — faster animation
                 StickFigureDemo(exercise: exercise, isAlternate: isAlternate)
-                    .frame(width: 220, height: 280)
+                    .frame(width: 200, height: 250)
 
                 // Instructions
-                VStack(spacing: 12) {
+                VStack(spacing: 10) {
                     instructionsCard
                     tipsCard
                 }
@@ -51,7 +65,8 @@ struct ExerciseDemoView: View {
                 Spacer()
 
                 // Buttons
-                VStack(spacing: 12) {
+                VStack(spacing: 10) {
+                    // Primary: Start Tracking
                     Button(action: onStart) {
                         HStack(spacing: 8) {
                             Image(systemName: "play.fill")
@@ -60,7 +75,7 @@ struct ExerciseDemoView: View {
                         }
                         .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
+                        .padding(.vertical, 14)
                         .background(Color.brandGradient)
                         .cornerRadius(28)
                         .shadow(color: Color.themePrimary.opacity(0.5), radius: 12, x: 0, y: 4)
@@ -68,11 +83,21 @@ struct ExerciseDemoView: View {
                     .accessibilityLabel("Start tracking")
                     .accessibilityIdentifier("demo-start-btn")
 
+                    // Secondary: Skip → Start (same as start, just a faster path)
+                    Button(action: onStart) {
+                        Text("Skip → Start Now")
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white.opacity(0.8))
+                            .padding(.vertical, 8)
+                    }
+                    .accessibilityIdentifier("demo-skip-btn")
+
+                    // Cancel
                     Button(action: onCancel) {
                         Text("Cancel")
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white.opacity(0.7))
-                            .padding(.vertical, 8)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white.opacity(0.5))
+                            .padding(.vertical, 6)
                     }
                     .accessibilityIdentifier("demo-cancel-btn")
                 }
@@ -81,7 +106,8 @@ struct ExerciseDemoView: View {
             }
         }
         .onAppear {
-            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+            // Faster animation: 0.5s cycle (was 0.8s)
+            withAnimation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true)) {
                 isAlternate.toggle()
             }
         }

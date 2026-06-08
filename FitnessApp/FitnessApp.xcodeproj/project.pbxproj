@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		10784A4C4958E0E784CD4DD1 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78CFED289478DBC3F79515FC /* ChatViewModel.swift */; };
 		1321F9FB2FC6DA7A0022DD7D /* UserProfileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1321F9FA2FC6DA7A0022DD7D /* UserProfileStore.swift */; };
 		1321F9FD2FC6ECB50022DD7D /* ExerciseDemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1321F9FC2FC6ECB50022DD7D /* ExerciseDemoView.swift */; };
 		1321F9FF2FC6F0580022DD7D /* WorkoutCompletionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1321F9FE2FC6F0580022DD7D /* WorkoutCompletionSheet.swift */; };
@@ -55,9 +56,21 @@
 		13EC253B2FBB043200DD8B44 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13EC250C2FBB043000DD8B44 /* ContentView.swift */; };
 		13EC253C2FBB043200DD8B44 /* CLAUDE.md in Resources */ = {isa = PBXBuildFile; fileRef = 13EC250D2FBB043100DD8B44 /* CLAUDE.md */; };
 		13EC253D2FBB043200DD8B44 /* BEFORE_YOU_START.md in Resources */ = {isa = PBXBuildFile; fileRef = 13EC250E2FBB043100DD8B44 /* BEFORE_YOU_START.md */; };
+		2FC7782CC6387C5DE4C1A0DF /* FrameChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63C82A46293FB102C7BC8D8 /* FrameChecker.swift */; };
+		540CF9597CB37F53C79DD238 /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18F5807C3038F9A45A5F59CF /* ChatMessage.swift */; };
+		57FB29D61B6AAF1719A3DEFA /* ContextBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B840494C59352BA31F2886FC /* ContextBuilder.swift */; };
+		66C3AD5DAE17C704525E1C7F /* MarkdownTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F939ED7304932181F00F33B2 /* MarkdownTextView.swift */; };
+		8469AEED7FC3DF36078F33FB /* ChatBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B46B1E2B639E247AE241435C /* ChatBubbleView.swift */; };
+		8C43EF3C888200043E75E94B /* ExerciseClassifierManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B1A93308DA60F290BF28F78 /* ExerciseClassifierManager.swift */; };
+		8F5215BF06C03528658BDCE0 /* GLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 849A9FA71A00E33A4D94D6B0 /* GLMService.swift */; };
+		AB9366943B0DDD84BAEC98C6 /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67049157AFC93F225C295E1F /* MoreView.swift */; };
+		C3EFDA19A64C32011F1AD991 /* APIKeySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 383E7CCDEBB3AA442EC36154 /* APIKeySettingsView.swift */; };
+		D1F203992E71755546FF7E65 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 506144D9AF85F295DE44BE15 /* ChatView.swift */; };
+		DAEA14641B59506289D0B890 /* ExerciseClassifier.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 111DD781FE627B0DA402467B /* ExerciseClassifier.mlmodel */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		111DD781FE627B0DA402467B /* ExerciseClassifier.mlmodel */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file.mlmodel; path = ExerciseClassifier.mlmodel; sourceTree = "<group>"; };
 		1321F9FA2FC6DA7A0022DD7D /* UserProfileStore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UserProfileStore.swift; sourceTree = "<group>"; };
 		1321F9FC2FC6ECB50022DD7D /* ExerciseDemoView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ExerciseDemoView.swift; sourceTree = "<group>"; };
 		1321F9FE2FC6F0580022DD7D /* WorkoutCompletionSheet.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WorkoutCompletionSheet.swift; sourceTree = "<group>"; };
@@ -113,6 +126,17 @@
 		13EC25132FBB043100DD8B44 /* CalorieGoalViewModelTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CalorieGoalViewModelTests.swift; sourceTree = "<group>"; };
 		13EC25152FBB043100DD8B44 /* WorkoutRecommendationEngineTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WorkoutRecommendationEngineTests.swift; sourceTree = "<group>"; };
 		13EC25172FBB043200DD8B44 /* OnboardingUITests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OnboardingUITests.swift; sourceTree = "<group>"; };
+		18F5807C3038F9A45A5F59CF /* ChatMessage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
+		383E7CCDEBB3AA442EC36154 /* APIKeySettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = APIKeySettingsView.swift; sourceTree = "<group>"; };
+		506144D9AF85F295DE44BE15 /* ChatView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		67049157AFC93F225C295E1F /* MoreView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
+		78CFED289478DBC3F79515FC /* ChatViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
+		849A9FA71A00E33A4D94D6B0 /* GLMService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GLMService.swift; sourceTree = "<group>"; };
+		9B1A93308DA60F290BF28F78 /* ExerciseClassifierManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExerciseClassifierManager.swift; sourceTree = "<group>"; };
+		B46B1E2B639E247AE241435C /* ChatBubbleView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatBubbleView.swift; sourceTree = "<group>"; };
+		B63C82A46293FB102C7BC8D8 /* FrameChecker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FrameChecker.swift; sourceTree = "<group>"; };
+		B840494C59352BA31F2886FC /* ContextBuilder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContextBuilder.swift; sourceTree = "<group>"; };
+		F939ED7304932181F00F33B2 /* MarkdownTextView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MarkdownTextView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -294,6 +318,8 @@
 				13EC24FC2FBB043000DD8B44 /* Calories */,
 				13EC24FF2FBB043000DD8B44 /* Workout */,
 				13EC25032FBB043000DD8B44 /* Notifications */,
+				938FF63D50EA046096AC558C /* Chat */,
+				F3C66B290E781BC51E01232B /* More */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -333,6 +359,9 @@
 				13EC24F62FBB043000DD8B44 /* CameraViewModel.swift */,
 				13EC24F72FBB043000DD8B44 /* CameraFeedView.swift */,
 				13EC24F82FBB043000DD8B44 /* VisionBodyPoseAnalyzer.swift */,
+				9B1A93308DA60F290BF28F78 /* ExerciseClassifierManager.swift */,
+				B63C82A46293FB102C7BC8D8 /* FrameChecker.swift */,
+				111DD781FE627B0DA402467B /* ExerciseClassifier.mlmodel */,
 			);
 			path = Camera;
 			sourceTree = "<group>";
@@ -433,6 +462,31 @@
 				13EC25172FBB043200DD8B44 /* OnboardingUITests.swift */,
 			);
 			path = FitnessAppUITests;
+			sourceTree = "<group>";
+		};
+		938FF63D50EA046096AC558C /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				18F5807C3038F9A45A5F59CF /* ChatMessage.swift */,
+				78CFED289478DBC3F79515FC /* ChatViewModel.swift */,
+				383E7CCDEBB3AA442EC36154 /* APIKeySettingsView.swift */,
+				B840494C59352BA31F2886FC /* ContextBuilder.swift */,
+				B46B1E2B639E247AE241435C /* ChatBubbleView.swift */,
+				506144D9AF85F295DE44BE15 /* ChatView.swift */,
+				849A9FA71A00E33A4D94D6B0 /* GLMService.swift */,
+				F939ED7304932181F00F33B2 /* MarkdownTextView.swift */,
+			);
+			name = Chat;
+			path = Chat;
+			sourceTree = "<group>";
+		};
+		F3C66B290E781BC51E01232B /* More */ = {
+			isa = PBXGroup;
+			children = (
+				67049157AFC93F225C295E1F /* MoreView.swift */,
+			);
+			name = More;
+			path = More;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -551,6 +605,18 @@
 				13EC252E2FBB043200DD8B44 /* ProfileView.swift in Sources */,
 				13EC25352FBB043200DD8B44 /* NotificationManager.swift in Sources */,
 				13EC25212FBB043200DD8B44 /* MainTabView.swift in Sources */,
+				8C43EF3C888200043E75E94B /* ExerciseClassifierManager.swift in Sources */,
+				540CF9597CB37F53C79DD238 /* ChatMessage.swift in Sources */,
+				10784A4C4958E0E784CD4DD1 /* ChatViewModel.swift in Sources */,
+				C3EFDA19A64C32011F1AD991 /* APIKeySettingsView.swift in Sources */,
+				57FB29D61B6AAF1719A3DEFA /* ContextBuilder.swift in Sources */,
+				8469AEED7FC3DF36078F33FB /* ChatBubbleView.swift in Sources */,
+				D1F203992E71755546FF7E65 /* ChatView.swift in Sources */,
+				8F5215BF06C03528658BDCE0 /* GLMService.swift in Sources */,
+				2FC7782CC6387C5DE4C1A0DF /* FrameChecker.swift in Sources */,
+				DAEA14641B59506289D0B890 /* ExerciseClassifier.mlmodel in Sources */,
+				AB9366943B0DDD84BAEC98C6 /* MoreView.swift in Sources */,
+				66C3AD5DAE17C704525E1C7F /* MarkdownTextView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

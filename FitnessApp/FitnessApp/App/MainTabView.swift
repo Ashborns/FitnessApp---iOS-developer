@@ -44,7 +44,7 @@ struct MainTabView: View {
                 workoutTab
                 cameraPlaceholder
                 caloriesTab
-                profileTab
+                moreTab
             }
             .tint(Color.themePrimary)
         }
@@ -92,14 +92,12 @@ struct MainTabView: View {
             .tag(AppRouter.AppTab.calories)
     }
 
-    private var profileTab: some View {
-        NavigationStack {
-            SettingsView()
-        }
-        .tabItem {
-            Label("Profile", systemImage: "person.circle.fill")
-        }
-        .tag(AppRouter.AppTab.profile)
+    private var moreTab: some View {
+        MoreView()
+            .tabItem {
+                Label("More", systemImage: "ellipsis.circle.fill")
+            }
+            .tag(AppRouter.AppTab.more)
     }
 }
 

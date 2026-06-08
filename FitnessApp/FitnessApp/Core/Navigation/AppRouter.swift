@@ -15,8 +15,10 @@ final class AppRouter: ObservableObject {
         case workout
         case camera
         case calories
-        case profile
+        case more
+        case profile   // internal deep link — tidak tampil di tab bar
         case progress
+        case chat      // internal deep link — tidak tampil di tab bar
     }
 
     // MARK: - Published Properties
@@ -32,6 +34,10 @@ final class AppRouter: ObservableObject {
 
     /// The tab that was selected before the camera was opened.
     @Published var previousTab: AppTab = .home
+
+    /// If set, the camera opens with this exercise pre-selected.
+    /// Consumed by CameraFeedView on appear, then cleared.
+    @Published var pendingExercise: ExerciseType?
 
     // MARK: - Deep Link Handling
 
@@ -65,6 +71,15 @@ final class AppRouter: ObservableObject {
     /// so it can be restored on dismiss.
     func openCamera() {
         previousTab = selectedTab
+        pendingExercise = nil
+        showCamera = true
+    }
+
+    /// Opens the camera full-screen cover with a specific exercise pre-selected.
+    /// The camera will skip the demo and start tracking immediately.
+    func openCamera(with exercise: ExerciseType) {
+        previousTab = selectedTab
+        pendingExercise = exercise
         showCamera = true
     }
 
@@ -73,5 +88,6 @@ final class AppRouter: ObservableObject {
     func dismissCamera() {
         showCamera = false
         selectedTab = previousTab
+        pendingExercise = nil
     }
 }

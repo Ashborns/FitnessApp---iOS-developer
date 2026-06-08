@@ -9,6 +9,7 @@ import Vision
 struct CameraFeedView: View {
 
     @StateObject private var viewModel = CameraViewModel()
+    @EnvironmentObject private var router: AppRouter
     @Environment(\.dismiss) private var dismiss
     @State private var poseDetectedPulse: Bool = false
     @State private var repPulse: Bool = false
@@ -34,6 +35,7 @@ struct CameraFeedView: View {
                         viewModel.selectExercise(demo)
                         demoExercise = nil
                         resetWorkout()
+                        startTimer()  // Start timer when user actually starts tracking
                     },
                     onCancel: {
                         demoExercise = nil
@@ -61,9 +63,17 @@ struct CameraFeedView: View {
             await viewModel.requestPermission()
             if viewModel.isAuthorized {
                 viewModel.configureAndStart()
-                startTimer()
-                // Show demo for default exercise on first open
-                demoExercise = viewModel.selectedExercise
+                // DON'T start timer here — wait until user dismisses demo and starts tracking
+
+                // If opened from chat with a specific exercise, select it directly (skip demo)
+                if let pending = router.pendingExercise {
+                    viewModel.selectExercise(pending)
+                    router.pendingExercise = nil
+                    startTimer()  // Start timer immediately when skipping demo
+                } else {
+                    // Show demo for default exercise on first open
+                    demoExercise = viewModel.selectedExercise
+                }
             }
         }
         .onDisappear {
@@ -90,8 +100,13 @@ struct CameraFeedView: View {
                     .accessibilityHidden(true)
             }
 
-            // Top + bottom gradient overlays for readable HUD
+                    // Top + bottom gradient overlays for readable HUD
             gradientOverlay
+
+            // Frame position warning border overlay
+            if !viewModel.frameCheckResult.isReady {
+                frameWarningBorder
+            }
 
             VStack {
                 topBar
@@ -234,22 +249,111 @@ struct CameraFeedView: View {
                     .foregroundColor(.white.opacity(0.85))
                     .tracking(1.2)
             }
+
+            // ML prediction label (secondary info only)
+            if ExerciseClassifierManager.shared.isModelLoaded {
+                mlPredictionLabel
+            }
         }
+    }
+
+    // MARK: - ML Prediction Label
+
+    private var mlPredictionLabel: some View {
+        let classifier = ExerciseClassifierManager.shared
+        return HStack(spacing: 4) {
+            Image(systemName: "brain.head.profile")
+                .font(.system(size: 8))
+                .foregroundColor(.white.opacity(0.5))
+            Text("AI: \(classifier.predictedDisplayName)")
+                .font(.system(size: 8, weight: .medium))
+                .foregroundColor(.white.opacity(0.5))
+            Text("(\(Int(classifier.confidence * 100))%)")
+                .font(.system(size: 8, weight: .regular))
+                .foregroundColor(.white.opacity(0.4))
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(Color.white.opacity(0.1))
+        .cornerRadius(6)
+        .accessibilityIdentifier("camera-ml-label")
     }
 
     // MARK: - Feedback Banner
 
+    // MARK: - Frame Warning Border
+
+    private var frameWarningBorder: some View {
+        ZStack {
+            // Outer pulsing border
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(warningColor, lineWidth: 3)
+                .padding(12)
+                .opacity(0.8)
+
+            // Warning icon + text at top
+            VStack {
+                HStack(spacing: 6) {
+                    Image(systemName: warningIcon)
+                        .font(.system(size: 11, weight: .bold))
+                    Text(viewModel.frameCheckResult.feedbackMessage)
+                        .font(.system(size: 11, weight: .bold))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(warningColor.opacity(0.7))
+                .cornerRadius(8)
+                .padding(.top, 20)
+                Spacer()
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityIdentifier("camera-frame-warning")
+    }
+
+    private var warningColor: Color {
+        switch viewModel.frameCheckResult {
+        case .ok:                         return .clear
+        case .tooFar, .tooClose, .partiallyOutOfFrame: return .orange
+        case .notCentered:                return .yellow
+        case .noBodyDetected:             return .red
+        }
+    }
+
+    private var warningIcon: String {
+        switch viewModel.frameCheckResult {
+        case .ok:                         return ""
+        case .tooFar:                     return "arrow.up.left.and.arrow.down.right"
+        case .tooClose:                   return "arrow.down.right.and.arrow.up.left"
+        case .notCentered:                return "arrow.left.and.right"
+        case .partiallyOutOfFrame:        return "person.crop.rectangle"
+        case .noBodyDetected:             return "person.slash"
+        }
+    }
+
     private var feedbackBanner: some View {
-        Text(viewModel.feedback)
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundColor(.white)
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Color.black.opacity(0.5))
-            .cornerRadius(10)
-            .padding(.horizontal, 20)
-            .accessibilityIdentifier("camera-instruction-label")
+        HStack(spacing: 6) {
+            if !viewModel.frameCheckResult.isReady {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(.orange)
+            }
+            Text(viewModel.feedback)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(
+            viewModel.frameCheckResult.isReady
+                ? Color.black.opacity(0.5)
+                : Color.orange.opacity(0.3)
+        )
+        .cornerRadius(10)
+        .padding(.horizontal, 20)
+        .accessibilityIdentifier("camera-instruction-label")
     }
 
     // MARK: - Bottom Controls
@@ -335,6 +439,7 @@ struct CameraFeedView: View {
     /// Close button: if user has logged any reps, save session and show summary.
     /// Otherwise just dismiss.
     private func handleClose() {
+        stopTimer()  // Stop timer before saving to prevent leak
         let summary = viewModel.saveWorkoutSession()
         if summary.hasData {
             completionSummary = summary

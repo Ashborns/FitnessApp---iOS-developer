@@ -1,7 +1,7 @@
 import SwiftUI
 import CoreData
 
-/// Settings — editorial layout with profile hero, inline stats, and minimal list rows.
+/// Settings — redesigned with card-based layout matching the PULSE design system.
 struct SettingsView: View {
 
     @StateObject private var profileStore = UserProfileStore.shared
@@ -17,15 +17,18 @@ struct SettingsView: View {
             Color.themeBackground.ignoresSafeArea()
 
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 24) {
                     topNav
-                    profileHero
-                    statsBar
-                    sectionsGroup
+                    profileHeroCard
+                    statsCards
+                    personalCard
+                    workoutCard
+                    dataCard
                     appFooter
                     Spacer().frame(height: 100)
                 }
                 .padding(.horizontal, 24)
+                .padding(.top, 8)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -44,232 +47,332 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Sections Group (collapsed into one view to keep ViewBuilder count low)
+    // MARK: - Top Nav
 
-    private var sectionsGroup: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            divider(top: 28)
-            personalSection
-            divider(top: 24)
-            workoutSection
-            divider(top: 24)
-            dataSection
-            divider(top: 24)
+    private var topNav: some View {
+        HStack(alignment: .center, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: BrandTokens.logoSymbol)
+                    .font(.system(size: 16, weight: .heavy))
+                    .foregroundStyle(Color.brandGradient)
+                Text(BrandTokens.appName)
+                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .foregroundColor(.primary)
+                    .tracking(2)
+            }
+            Spacer()
+            Text("PROFILE")
+                .font(.system(size: 11, weight: .heavy))
+                .foregroundColor(.secondary)
+                .tracking(1.5)
+        }
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+    }
+
+    // MARK: - Profile Hero Card
+
+    private var profileHeroCard: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 16) {
+                // Avatar
+                ZStack {
+                    Circle()
+                        .fill(Color.brandGradient)
+                        .frame(width: 72, height: 72)
+                        .shadow(color: Color.themePrimary.opacity(0.4), radius: 14, x: 0, y: 4)
+                    Text(initialString)
+                        .font(.system(size: 26, weight: .black, design: .rounded))
+                        .foregroundColor(.black)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(profileStore.name.isEmpty ? "Athlete" : profileStore.name)
+                        .font(.system(size: 28, weight: .black, design: .rounded))
+                        .foregroundColor(.primary)
+                        .tracking(-0.5)
+                    HStack(spacing: 6) {
+                        Image(systemName: profileStore.fitnessGoal.icon)
+                            .font(.system(size: 12, weight: .heavy))
+                            .foregroundColor(.themePrimary)
+                        Text(profileStore.fitnessGoal.displayName)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.secondary)
+                        Text("·")
+                            .foregroundColor(.secondary)
+                        Text("\(Int(profileStore.dailyCalorieGoal)) kcal")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                Spacer()
+
+                // Edit button
+                Button {
+                    HapticManager.shared.selection()
+                    showProfileEditor = true
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 13, weight: .heavy))
+                        .foregroundColor(.themePrimary)
+                        .padding(10)
+                        .background(Circle().fill(Color.themePrimary.opacity(0.12)))
+                }
+                .accessibilityLabel("Edit profile")
+            }
+        }
+        .padding(20)
+        .background(Color.themeSurface)
+        .clipShape(RoundedRectangle(cornerRadius: .cornerRadiusLarge, style: .continuous))
+    }
+
+    // MARK: - Stats Cards
+
+    private var statsCards: some View {
+        HStack(spacing: 12) {
+            statCard(
+                icon: "flame.fill",
+                value: "\(goalsStore.currentStreak)",
+                unit: goalsStore.currentStreak == 1 ? "day" : "days",
+                label: "Streak",
+                color: .themeAccent
+            )
+            statCard(
+                icon: "trophy.fill",
+                value: "\(goalsStore.bestStreak)",
+                unit: "best",
+                label: "Record",
+                color: .themeSecondary
+            )
+            statCard(
+                icon: "scalemass.fill",
+                value: String(format: "%.1f", profileStore.bmi),
+                unit: profileStore.bmiCategory.lowercased(),
+                label: "BMI",
+                color: .themePrimary
+            )
         }
     }
 
-    private func divider(top: CGFloat) -> some View {
-        Divider()
-            .background(Color.themeBorder)
-            .padding(.vertical, top)
+    private func statCard(icon: String, value: String, unit: String, label: String, color: Color) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(color)
+                .frame(height: 20)
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 24, weight: .black, design: .rounded))
+                    .foregroundColor(.primary)
+                Text(unit)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            Text(label.uppercased())
+                .font(.system(size: 10, weight: .heavy))
+                .foregroundColor(.secondary)
+                .tracking(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(Color.themeSurface)
+        .clipShape(RoundedRectangle(cornerRadius: .cornerRadiusLarge, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value) \(unit)")
     }
 
-    // MARK: - Personal Section
+    // MARK: - Personal Card
 
-    private var personalSection: some View {
+    private var personalCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionLabel("Personal")
-            listRow(icon: "person", title: "Edit profile", subtitle: profileSubtitle, action: {
+            cardHeader(icon: "person.fill", title: "Personal")
+
+            cardRow(icon: "person.text.rectangle", title: "Edit profile", subtitle: profileSubtitle) {
                 HapticManager.shared.selection()
                 showProfileEditor = true
-            })
-            listRow(
-                icon: "ruler",
-                title: "Units",
-                subtitle: useImperial ? "Imperial" : "Metric"
-            ) {
+            }
+
+            Divider().background(Color.themeBorder).padding(.leading, 48)
+
+            cardRow(icon: "ruler", title: "Units", subtitle: useImperial ? "Imperial (lbs, ft)" : "Metric (kg, cm)") {
+                // no action — toggle is inline
+            } trailing: {
                 Toggle("", isOn: $useImperial)
                     .labelsHidden()
                     .tint(.themePrimary)
             }
         }
+        .padding(.vertical, 12)
+        .background(Color.themeSurface)
+        .clipShape(RoundedRectangle(cornerRadius: .cornerRadiusLarge, style: .continuous))
     }
 
-    // MARK: - Workout Section
+    // MARK: - Workout Card
 
-    private var workoutSection: some View {
+    private var workoutCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionLabel("Workout")
-            repGoalRow
+            cardHeader(icon: "figure.run", title: "Workout")
+
+            // Rep goal row with inline stepper
+            HStack(spacing: 14) {
+                Image(systemName: "target")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.themePrimary)
+                    .frame(width: 24)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Daily rep goal")
+                        .font(.system(size: 15, weight: .heavy, design: .rounded))
+                        .foregroundColor(.primary)
+                    HStack(alignment: .firstTextBaseline, spacing: 3) {
+                        Text("\(goalsStore.dailyRepGoal)")
+                            .font(.system(size: 13, weight: .black, design: .rounded))
+                            .foregroundStyle(Color.brandGradient)
+                        Text("reps per day")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                Spacer()
+                Stepper("", value: $goalsStore.dailyRepGoal, in: 10...500, step: 10)
+                    .labelsHidden()
+                    .tint(.themePrimary)
+            }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 20)
+
+            Divider().background(Color.themeBorder).padding(.leading, 48)
+
+            // Notifications row
             NavigationLink {
                 NotificationSettingsView()
             } label: {
-                listRowContent(
-                    icon: "bell",
-                    title: "Notifications",
-                    subtitle: "Daily reminders",
-                    trailingChevron: true
-                )
+                HStack(spacing: 14) {
+                    Image(systemName: "bell.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.themePrimary)
+                        .frame(width: 24)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Notifications")
+                            .font(.system(size: 15, weight: .heavy, design: .rounded))
+                            .foregroundColor(.primary)
+                        Text("Daily reminders & workout alerts")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .heavy))
+                        .foregroundColor(.secondary.opacity(0.5))
+                }
                 .padding(.vertical, 14)
+                .padding(.horizontal, 20)
             }
             .buttonStyle(.plain)
         }
+        .padding(.vertical, 12)
+        .background(Color.themeSurface)
+        .clipShape(RoundedRectangle(cornerRadius: .cornerRadiusLarge, style: .continuous))
     }
 
-    // MARK: - Data Section
+    // MARK: - Data Card
 
-    private var dataSection: some View {
+    private var dataCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionLabel("Data")
-            listRow(
-                icon: "arrow.counterclockwise",
-                title: "Reset all data",
-                subtitle: "Workouts, goals, profile",
-                isDestructive: true,
-                action: {
-                    HapticManager.shared.warning()
-                    showResetConfirm = true
+            cardHeader(icon: "externaldrive.fill", title: "Data")
+
+            Button {
+                HapticManager.shared.warning()
+                showResetConfirm = true
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.themeError)
+                        .frame(width: 24)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Reset all data")
+                            .font(.system(size: 15, weight: .heavy, design: .rounded))
+                            .foregroundColor(.themeError)
+                        Text("Workouts, goals, profile & streaks")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
                 }
-            )
+                .padding(.vertical, 14)
+                .padding(.horizontal, 20)
+            }
+            .buttonStyle(.plain)
         }
+        .padding(.vertical, 12)
+        .background(Color.themeSurface)
+        .clipShape(RoundedRectangle(cornerRadius: .cornerRadiusLarge, style: .continuous))
     }
 
-    // MARK: - Top Nav
+    // MARK: - Reusable Card Components
 
-    private var topNav: some View {
-        HStack {
-            Text("SETTINGS")
+    private func cardHeader(icon: String, title: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .heavy))
+                .foregroundColor(.themePrimary)
+            Text(title.uppercased())
                 .font(.system(size: 11, weight: .heavy))
                 .foregroundColor(.secondary)
-                .tracking(2)
-            Spacer()
+                .tracking(1.5)
         }
-        .padding(.top, 12)
-        .padding(.bottom, 16)
+        .padding(.horizontal, 20)
+        .padding(.bottom, 8)
     }
 
-    // MARK: - Profile Hero
-
-    private var profileHero: some View {
-        HStack(alignment: .center, spacing: 16) {
-            // Avatar
-            ZStack {
-                Circle()
-                    .fill(Color.brandGradient)
-                    .frame(width: 64, height: 64)
-                    .shadow(color: Color.themePrimary.opacity(0.4), radius: 10)
-                Text(initialString)
-                    .font(.system(size: 22, weight: .black, design: .rounded))
-                    .foregroundColor(.black)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(profileStore.name.isEmpty ? "Athlete" : profileStore.name)
-                    .font(.system(size: 26, weight: .black, design: .rounded))
-                    .foregroundColor(.primary)
-                    .tracking(-0.5)
-                HStack(spacing: 6) {
-                    Image(systemName: profileStore.fitnessGoal.icon)
-                        .font(.system(size: 11, weight: .heavy))
-                        .foregroundColor(.themePrimary)
-                    Text(profileStore.fitnessGoal.displayName)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.secondary)
-                    Text("·")
-                        .foregroundColor(.secondary)
-                    Text("\(Int(profileStore.dailyCalorieGoal)) kcal")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.secondary)
-                }
-            }
-            Spacer()
-        }
-        .padding(.bottom, 24)
-    }
-
-    private var initialString: String {
-        let trimmed = profileStore.name.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return "A" }
-        return String(trimmed.prefix(1)).uppercased()
-    }
-
-    // MARK: - Stats Bar (inline, no card)
-
-    private var statsBar: some View {
-        HStack(alignment: .top, spacing: 0) {
-            statCol(value: "\(goalsStore.currentStreak)", unit: goalsStore.currentStreak == 1 ? "day" : "days", label: "Streak", color: .themeAccent)
-            verticalDivider
-            statCol(value: "\(goalsStore.bestStreak)", unit: "best", label: "Record", color: .themeSecondary)
-            verticalDivider
-            statCol(value: String(format: "%.1f", profileStore.bmi), unit: profileStore.bmiCategory.lowercased(), label: "BMI", color: .themePrimary)
-        }
-    }
-
-    private var verticalDivider: some View {
-        Rectangle()
-            .fill(Color.themeBorder)
-            .frame(width: 1, height: 44)
-            .padding(.horizontal, 8)
-    }
-
-    private func statCol(value: String, unit: String, label: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                Circle().fill(color).frame(width: 6, height: 6)
-                Text(label.uppercased())
-                    .font(.system(size: 10, weight: .heavy))
-                    .foregroundColor(.secondary)
-                    .tracking(1)
-            }
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(value)
-                    .font(.system(size: 22, weight: .black, design: .rounded))
-                    .foregroundColor(.primary)
-                Text(unit)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(label): \(value) \(unit)")
-    }
-
-    // MARK: - Section Label
-
-    private func sectionLabel(_ text: String) -> some View {
-        Text(text.uppercased())
-            .font(.system(size: 11, weight: .heavy))
-            .foregroundColor(.secondary)
-            .tracking(1.5)
-            .padding(.bottom, 8)
-    }
-
-    // MARK: - List Row Components
-
-    /// Tappable row with action.
-    private func listRow(
+    private func cardRow(
         icon: String,
         title: String,
         subtitle: String,
-        isDestructive: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            listRowContent(
-                icon: icon,
-                title: title,
-                subtitle: subtitle,
-                isDestructive: isDestructive,
-                trailingChevron: true
-            )
+            HStack(spacing: 14) {
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.themePrimary)
+                    .frame(width: 24)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .heavy, design: .rounded))
+                        .foregroundColor(.primary)
+                    Text(subtitle)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .heavy))
+                    .foregroundColor(.secondary.opacity(0.5))
+            }
             .padding(.vertical, 14)
+            .padding(.horizontal, 20)
         }
         .buttonStyle(.plain)
     }
 
-    /// Static row with custom trailing view (e.g. Toggle).
-    private func listRow<Trailing: View>(
+    private func cardRow<Trailing: View>(
         icon: String,
         title: String,
         subtitle: String,
+        action: @escaping () -> Void = {},
         @ViewBuilder trailing: () -> Trailing
     ) -> some View {
         HStack(spacing: 14) {
             Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.themePrimary)
                 .frame(width: 24)
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(size: 15, weight: .heavy, design: .rounded))
@@ -282,66 +385,7 @@ struct SettingsView: View {
             trailing()
         }
         .padding(.vertical, 14)
-    }
-
-    private func listRowContent(
-        icon: String,
-        title: String,
-        subtitle: String,
-        isDestructive: Bool = false,
-        trailingChevron: Bool = false
-    ) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(isDestructive ? .themeError : .themePrimary)
-                .frame(width: 24)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 15, weight: .heavy, design: .rounded))
-                    .foregroundColor(isDestructive ? .themeError : .primary)
-                Text(subtitle)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
-            }
-            Spacer()
-            if trailingChevron {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .heavy))
-                    .foregroundColor(.secondary.opacity(0.6))
-            }
-        }
-    }
-
-    // MARK: - Rep Goal Row (inline stepper)
-
-    private var repGoalRow: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "target")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.themePrimary)
-                .frame(width: 24)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Daily rep goal")
-                    .font(.system(size: 15, weight: .heavy, design: .rounded))
-                    .foregroundColor(.primary)
-                HStack(alignment: .firstTextBaseline, spacing: 3) {
-                    Text("\(goalsStore.dailyRepGoal)")
-                        .font(.system(size: 13, weight: .black, design: .rounded))
-                        .foregroundStyle(Color.brandGradient)
-                    Text("reps per day")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-            }
-            Spacer()
-            Stepper("", value: $goalsStore.dailyRepGoal, in: 10...500, step: 10)
-                .labelsHidden()
-                .tint(.themePrimary)
-        }
-        .padding(.vertical, 14)
+        .padding(.horizontal, 20)
     }
 
     // MARK: - App Footer
@@ -364,13 +408,20 @@ struct SettingsView: View {
             }
             Spacer()
         }
+        .padding(.top, 8)
     }
 
     // MARK: - Helpers
 
+    private var initialString: String {
+        let trimmed = profileStore.name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return "A" }
+        return String(trimmed.prefix(1)).uppercased()
+    }
+
     private var profileSubtitle: String {
-        let name = profileStore.name.isEmpty ? "Set your name" : profileStore.name
-        return "\(name) · \(profileStore.age) yrs"
+        let name = profileStore.name.isEmpty ? "Set your name, age & body metrics" : "\(profileStore.name) · \(profileStore.age) yrs"
+        return name
     }
 
     // MARK: - Reset
