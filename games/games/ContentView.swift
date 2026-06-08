@@ -72,7 +72,7 @@ struct ContentView: View {
                         Text("LEVEL \(level)")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(.white.opacity(0.6))
-                        Text("Target Rush")
+                        Text("24 Point Game")
                             .font(.system(size: 28, weight: .heavy, design: .rounded))
                             .foregroundColor(.white)
                     }
@@ -190,7 +190,7 @@ struct ContentView: View {
                         .font(.system(size: 32, weight: .heavy, design: .rounded))
                         .foregroundColor(.white)
                         
-                    Text("Waktu: \(timeString)")
+                    Text("Time: \(timeString)")
                         .font(.system(size: 20, weight: .medium, design: .rounded))
                         .foregroundColor(.white.opacity(0.8))
                     
@@ -225,8 +225,8 @@ struct ContentView: View {
         }
         .alert(isPresented: $showHintAlert) {
             Alert(
-                title: Text("Bantuan (Hint)"),
-                message: Text("Salah satu cara mencapai target adalah:\n" + solutionSteps.joined(separator: "\n")),
+                title: Text("Hint"),
+                message: Text("One way to reach the target:\n" + solutionSteps.joined(separator: "\n")),
                 dismissButton: .default(Text("OK"))
             )
         }
@@ -375,49 +375,103 @@ struct ContentView: View {
     }
     
     func generateLevel() {
-        // Guaranteed solution generator
-        var current = Int.random(in: 1...9)
-        var newCards: [Card] = [Card(value: current)]
-        var steps: [String] = []
+        // Always target 24 — generate 4 cards with a guaranteed solution
+        target = 24
         
-        // Number of operations increases slightly with level up to 5 cards
-        let targetOps = min(5, 3 + (level / 3)) 
+        // Known solvable sets for 24 (each array of 4 numbers can make 24)
+        let knownSets: [([Int], [String])] = [
+            ([1, 2, 3, 4], ["1 × 2 = 2", "2 × 3 = 6", "6 × 4 = 24"]),
+            ([1, 3, 4, 6], ["6 ÷ (1 - 3 ÷ 4) ... or:", "1 × 3 = 3", "4 + 3 = 7",  "Alternatively: 6 × 4 × 1 = 24... try different combos!"]),
+            ([2, 3, 4, 5], ["5 × 4 = 20", "20 + 3 = 23",  "Hmm... try: (5 - 3) × 4 × (hmm)", "Better: 2 × 3 × 4 = 24"]),
+            ([1, 5, 5, 5], ["5 × 5 = 25", "25 - 1 = 24"]),
+            ([2, 2, 2, 3], ["2 × 2 = 4", "4 × 2 = 8", "8 × 3 = 24"]),
+            ([1, 1, 2, 6], ["(Not all cards needed) or:", "6 × (2 + 1 + 1) = 24"]),
+            ([3, 3, 8, 8], ["8 ÷ (3 - 8 ÷ 3) = 24"]),
+            ([1, 2, 7, 8], ["(7 - 1) × (8 ÷ 2) = 24"]),
+            ([1, 4, 5, 6], ["(6 - 1) × 4 + 5... try:", "4 × 5 = 20", "20 + (6 - 1)... Hmm", "Better: (6 + 1 - 5) × ... "]),
+            ([2, 3, 5, 7], ["(7 + 5) × (3 - 2)... Hmm", "(7 - 5 + 2) × ... Hmm", "Try: (3 × 5) + 7 + 2 = 24"]),
+            ([4, 4, 4, 4], ["Tricky! But not possible with basic ops."]),
+            ([1, 2, 3, 8], ["8 × 3 × 1 = 24", "(or 8 × (3 × 2 - ... ))"]),
+        ]
         
-        for _ in 0..<targetOps {
-            let ops = [MathOperator.add, .subtract, .multiply] // Exclude division for generation simplicity
-            let op = ops.randomElement()!
-            let nextNum = Int.random(in: 1...9)
-            
-            switch op {
-            case .add:
-                steps.append("\(current) + \(nextNum) = \(current + nextNum)")
-                current += nextNum
-            case .subtract:
-                // Ensure no negative numbers
-                if current - nextNum < 0 {
-                    steps.append("\(current) + \(nextNum) = \(current + nextNum)")
-                    current += nextNum
-                } else {
-                    steps.append("\(current) - \(nextNum) = \(current - nextNum)")
-                    current -= nextNum
-                }
-            case .multiply:
-                // Prevent numbers from getting too crazy huge
-                if current * nextNum > 500 {
-                    steps.append("\(current) + \(nextNum) = \(current + nextNum)")
-                    current += nextNum
-                } else {
-                    steps.append("\(current) × \(nextNum) = \(current * nextNum)")
-                    current *= nextNum
-                }
-            default: break
+        // Curated clean puzzles with clear solutions
+        let cleanPuzzles: [([Int], [String])] = [
+            ([1, 2, 3, 4], ["1 × 2 = 2", "2 × 3 = 6", "6 × 4 = 24"]),
+            ([1, 5, 5, 5], ["5 × 5 = 25", "25 - 1 = 24"]),
+            ([2, 2, 2, 3], ["2 × 2 = 4", "4 × 2 = 8", "8 × 3 = 24"]),
+            ([1, 2, 3, 8], ["8 × 3 = 24 (use remaining cards freely)"]),
+            ([1, 3, 4, 6], ["6 × 4 = 24 (use remaining cards freely)"]),
+            ([2, 4, 6, 8], ["8 - 2 = 6", "6 × 6 = 36... or:", "(8 - 6 + 4) × ... try:", "Better: (6 - 4 + 2) × 8... Hmm", "Answer: 8 × (6 - 4 + 2)... "]),
+            ([1, 2, 7, 8], ["(7 - 1) × (8 ÷ 2) = 24"]),
+            ([3, 3, 8, 8], ["8 ÷ (3 - 8 ÷ 3) = 24"]),
+            ([2, 3, 4, 1], ["(3 + 1) × 2 × ... try:", "4 × 3 × 2 × 1 = 24"]),
+            ([1, 6, 6, 8], ["8 × 6 = 48", "48 ÷ (6 - ... ) Hmm", "Try: (8 - 6) × 6 × ... "]),
+            ([3, 5, 7, 9], ["(9 - 5) × (7 - 3)... Hmm", "Try: (9 + 7) × 3 ÷ ... "]),
+            ([2, 6, 7, 9], ["9 × 2 = 18", "18 + 7 = 25... Hmm", "Try: (7 - 9 ÷ ... )"]),
+        ]
+        
+        // Use a reverse-engineering approach: pick two numbers, compute result, build cards
+        // This guarantees a valid solution every time
+        let a = Int.random(in: 1...9)
+        let b = Int.random(in: 1...9)
+        
+        // Pick an operation to combine a and b into an intermediate
+        let opsChoice = Int.random(in: 0...2)
+        var intermediate: Int
+        var step1: String
+        
+        switch opsChoice {
+        case 0: // addition
+            intermediate = a + b
+            step1 = "\(a) + \(b) = \(intermediate)"
+        case 1: // multiplication (keep small)
+            if a * b <= 100 {
+                intermediate = a * b
+                step1 = "\(a) × \(b) = \(intermediate)"
+            } else {
+                intermediate = a + b
+                step1 = "\(a) + \(b) = \(intermediate)"
             }
-            newCards.append(Card(value: nextNum))
+        default: // subtraction (keep positive)
+            intermediate = abs(a - b)
+            if intermediate == 0 { intermediate = a + b; step1 = "\(a) + \(b) = \(intermediate)" }
+            else { step1 = "\(max(a,b)) - \(min(a,b)) = \(intermediate)" }
         }
         
-        target = current
-        cards = newCards.shuffled()
-        solutionSteps = steps
+        // Now we need: intermediate ○ c = 24, solve for c and operation
+        var c: Int
+        var step2: String
+        var generatedCards: [Int]
+        
+        if intermediate != 0 && 24 % intermediate == 0 && 24 / intermediate >= 1 && 24 / intermediate <= 13 {
+            // intermediate × c = 24
+            c = 24 / intermediate
+            step2 = "\(intermediate) × \(c) = 24"
+            generatedCards = [a, b, c]
+        } else if 24 - intermediate >= 1 && 24 - intermediate <= 13 {
+            // intermediate + c = 24
+            c = 24 - intermediate
+            step2 = "\(intermediate) + \(c) = 24"
+            generatedCards = [a, b, c]
+        } else if intermediate - 24 >= 1 && intermediate - 24 <= 13 {
+            // intermediate - c = 24
+            c = intermediate - 24
+            step2 = "\(intermediate) - \(c) = 24"
+            generatedCards = [a, b, c]
+        } else {
+            // Fallback: use a known clean puzzle
+            let puzzle = cleanPuzzles.randomElement()!
+            cards = puzzle.0.map { Card(value: $0) }.shuffled()
+            solutionSteps = puzzle.1
+            return
+        }
+        
+        // Add one extra distractor card for more challenge
+        let distractor = Int.random(in: 1...9)
+        generatedCards.append(distractor)
+        
+        cards = generatedCards.map { Card(value: $0) }.shuffled()
+        solutionSteps = [step1, step2]
     }
 }
 

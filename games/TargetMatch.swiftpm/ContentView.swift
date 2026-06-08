@@ -49,7 +49,7 @@ struct ContentView: View {
                         Text("LEVEL \(level)")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(.white.opacity(0.6))
-                        Text("Target Rush")
+                        Text("24 Point Game")
                             .font(.system(size: 28, weight: .heavy, design: .rounded))
                             .foregroundColor(.white)
                     }
@@ -293,42 +293,65 @@ struct ContentView: View {
     }
     
     func generateLevel() {
-        // Guaranteed solution generator
-        var current = Int.random(in: 1...9)
-        var newCards: [Card] = [Card(value: current)]
+        // Always target 24
+        target = 24
         
-        // Number of operations increases slightly with level up to 5 cards
-        let targetOps = min(5, 3 + (level / 3)) 
+        // Curated clean puzzles with guaranteed solutions to 24
+        let cleanPuzzles: [[Int]] = [
+            [1, 2, 3, 4],  // 1×2×3×4 = 24
+            [1, 5, 5, 5],  // 5×5 - 1 = 24
+            [2, 2, 2, 3],  // 2×2×2×3 = 24
+            [1, 2, 3, 8],  // 8×3×1 = 24
+            [1, 3, 4, 6],  // 6×4×1 = 24
+            [1, 2, 7, 8],  // (7-1)×(8÷2) = 24
+            [3, 3, 8, 8],  // 8÷(3-8÷3) = 24
+            [2, 3, 4, 1],  // 4×3×2×1 = 24
+        ]
         
-        for _ in 0..<targetOps {
-            let ops = [MathOperator.add, .subtract, .multiply] // Exclude division for generation simplicity
-            let op = ops.randomElement()!
-            let nextNum = Int.random(in: 1...9)
-            
-            switch op {
-            case .add:
-                current += nextNum
-            case .subtract:
-                // Ensure no negative numbers
-                if current - nextNum < 0 {
-                    current += nextNum
-                } else {
-                    current -= nextNum
-                }
-            case .multiply:
-                // Prevent numbers from getting too crazy huge
-                if current * nextNum > 500 {
-                    current += nextNum
-                } else {
-                    current *= nextNum
-                }
-            default: break
+        // Use reverse-engineering: pick two numbers, compute result, find third card
+        let a = Int.random(in: 1...9)
+        let b = Int.random(in: 1...9)
+        
+        let opsChoice = Int.random(in: 0...2)
+        var intermediate: Int
+        
+        switch opsChoice {
+        case 0:
+            intermediate = a + b
+        case 1:
+            if a * b <= 100 {
+                intermediate = a * b
+            } else {
+                intermediate = a + b
             }
-            newCards.append(Card(value: nextNum))
+        default:
+            intermediate = abs(a - b)
+            if intermediate == 0 { intermediate = a + b }
         }
         
-        target = current
-        cards = newCards.shuffled()
+        var generatedCards: [Int]
+        
+        if intermediate != 0 && 24 % intermediate == 0 && 24 / intermediate >= 1 && 24 / intermediate <= 13 {
+            let c = 24 / intermediate
+            generatedCards = [a, b, c]
+        } else if 24 - intermediate >= 1 && 24 - intermediate <= 13 {
+            let c = 24 - intermediate
+            generatedCards = [a, b, c]
+        } else if intermediate - 24 >= 1 && intermediate - 24 <= 13 {
+            let c = intermediate - 24
+            generatedCards = [a, b, c]
+        } else {
+            // Fallback: use a known clean puzzle
+            let puzzle = cleanPuzzles.randomElement()!
+            cards = puzzle.map { Card(value: $0) }.shuffled()
+            return
+        }
+        
+        // Add one extra distractor card
+        let distractor = Int.random(in: 1...9)
+        generatedCards.append(distractor)
+        
+        cards = generatedCards.map { Card(value: $0) }.shuffled()
     }
 }
 
