@@ -15,6 +15,11 @@ struct MoreView: View {
     @State private var appearAnimation = false
     /// Exercise yang pending dibuka di camera setelah chat di-dismiss
     @State private var pendingCameraExercise: ExerciseType?? = nil  // nil = tidak ada request; .some(nil) = buka camera tanpa exercise
+    /// Menampilkan alert ketika tautan atribusi gagal dibuka (R7.4)
+    @State private var showAttributionLinkError = false
+
+    /// URL sumber data ExerciseDB untuk atribusi (R7.2/7.3)
+    private let exerciseDBSourceURLString = "https://www.exercisedb.dev"
 
     var body: some View {
         NavigationStack {
@@ -48,11 +53,23 @@ struct MoreView: View {
                             .offset(y: appearAnimation ? 0 : 20)
                             .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.3), value: appearAnimation)
 
+                        exerciseDBAttributionSection
+                            .padding(.horizontal, 20)
+                            .padding(.top, 20)
+                            .opacity(appearAnimation ? 1 : 0)
+                            .offset(y: appearAnimation ? 0 : 20)
+                            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.4), value: appearAnimation)
+
                         Spacer().frame(height: 110)
                     }
                 }
             }
             .navigationBarHidden(true)
+            .alert("Tidak Dapat Membuka Tautan", isPresented: $showAttributionLinkError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Gagal membuka sumber ExerciseDB. Silakan coba lagi nanti.")
+            }
             .navigationDestination(isPresented: $showProfile) {
                 SettingsView()
             }
@@ -385,6 +402,67 @@ struct MoreView: View {
             )
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - ExerciseDB Attribution (Requirement 7)
+
+    private var exerciseDBAttributionSection: some View {
+        PulseCard {
+            VStack(alignment: .leading, spacing: .spacingMedium) {
+                SectionHeader(
+                    title: "Sumber Data",
+                    subtitle: "Data latihan disediakan oleh ExerciseDB"
+                )
+
+                Text("Aplikasi ini menggunakan data latihan dari ExerciseDB.")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    openExerciseDBSource()
+                } label: {
+                    HStack(spacing: .spacingMedium) {
+                        Image(systemName: "link")
+                            .font(.system(size: 13, weight: .heavy))
+                        Text("Kunjungi ExerciseDB")
+                            .font(.system(size: 14, weight: .heavy, design: .rounded))
+                        Spacer(minLength: 0)
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 12, weight: .heavy))
+                    }
+                    .foregroundColor(.themePrimary)
+                    .padding(.horizontal, .spacingLarge)
+                    .padding(.vertical, .spacingMedium)
+                    .frame(minHeight: 44)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        RoundedRectangle(cornerRadius: .cornerRadiusSmall, style: .continuous)
+                            .fill(Color.themePrimary.opacity(0.12))
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Buka sumber ExerciseDB")
+                .accessibilityHint("Membuka situs web sumber data ExerciseDB di browser")
+                .accessibilityIdentifier("more-exercisedb-attribution-link")
+            }
+        }
+    }
+
+    /// Membuka URL sumber ExerciseDB. Jika URL tidak valid atau gagal dibuka,
+    /// menampilkan pesan error tanpa crash dan teks atribusi tetap terlihat (R7.3/7.4).
+    private func openExerciseDBSource() {
+        HapticManager.shared.selection()
+        guard let url = URL(string: exerciseDBSourceURLString),
+              UIApplication.shared.canOpenURL(url) else {
+            showAttributionLinkError = true
+            return
+        }
+        UIApplication.shared.open(url, options: [:]) { success in
+            if !success {
+                showAttributionLinkError = true
+            }
+        }
     }
 
     // MARK: - Helpers

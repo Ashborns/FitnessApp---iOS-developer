@@ -8,7 +8,7 @@ struct WorkoutView: View {
     @EnvironmentObject var router: AppRouter
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $router.path) {
             ZStack(alignment: .top) {
                 Color.themeBackground.ignoresSafeArea()
                 content
@@ -20,6 +20,31 @@ struct WorkoutView: View {
                 Text(viewModel.errorMessage ?? "")
             }
             .accessibilityIdentifier("workout-root")
+            .navigationDestination(for: AppRouter.AppRoute.self) { route in
+                destination(for: route)
+            }
+        }
+    }
+
+    // MARK: - Route Destinations (design §3 Navigation & Router)
+
+    /// Single switch over `AppRoute` returning the matching screen for every
+    /// route pushed onto `router.path` (R3.2 / R3.3). Uses `@ViewBuilder` so no
+    /// `AnyView` is needed. `.exerciseDetail` resolves the id through a
+    /// lightweight loader since `ExerciseDetailView` requires a full item.
+    @ViewBuilder
+    private func destination(for route: AppRouter.AppRoute) -> some View {
+        switch route {
+        case .library:
+            LibraryView()
+        case .exerciseDetail(let exerciseID):
+            ExerciseDetailLoaderView(exerciseID: exerciseID)
+        case .builder(let routineID):
+            WorkoutBuilderView(routineID: routineID)
+        case .muscleMap:
+            MuscleMapView()
+        case .schedule:
+            ScheduleView()
         }
     }
 
@@ -35,6 +60,8 @@ struct WorkoutView: View {
                     topNav
                     headerSection
                     weekStats
+                    Divider().background(Color.themeBorder).padding(.vertical, 32)
+                    exerciseHubSection
                     Divider().background(Color.themeBorder).padding(.vertical, 32)
                     recommendationsSection
                     Divider().background(Color.themeBorder).padding(.vertical, 32)
@@ -114,6 +141,105 @@ struct WorkoutView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label): \(value) \(unit)")
+    }
+
+    // MARK: - Exercise Hub (entry points to ExerciseDB features — R3.2)
+
+    private var exerciseHubSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Exercise Hub")
+                    .font(.system(size: 22, weight: .black, design: .rounded))
+                    .foregroundColor(.primary)
+                Spacer()
+                Image(systemName: "square.grid.2x2.fill")
+                    .font(.system(size: 14, weight: .heavy))
+                    .foregroundStyle(Color.brandGradient)
+            }
+
+            LazyVGrid(columns: hubColumns, spacing: 12) {
+                hubTile(
+                    icon: "books.vertical.fill",
+                    title: "Library",
+                    subtitle: "Jelajahi latihan",
+                    route: .library,
+                    identifier: "workout-hub-library"
+                )
+                hubTile(
+                    icon: "figure.arms.open",
+                    title: "Muscle Map",
+                    subtitle: "Pilih dari tubuh",
+                    route: .muscleMap,
+                    identifier: "workout-hub-musclemap"
+                )
+                hubTile(
+                    icon: "hammer.fill",
+                    title: "Builder",
+                    subtitle: "Susun rutinitas",
+                    route: .builder(routineID: nil),
+                    identifier: "workout-hub-builder"
+                )
+                hubTile(
+                    icon: "calendar",
+                    title: "Schedule",
+                    subtitle: "Atur jadwal",
+                    route: .schedule,
+                    identifier: "workout-hub-schedule"
+                )
+            }
+        }
+    }
+
+    private var hubColumns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: 12),
+            GridItem(.flexible(), spacing: 12)
+        ]
+    }
+
+    private func hubTile(
+        icon: String,
+        title: String,
+        subtitle: String,
+        route: AppRouter.AppRoute,
+        identifier: String
+    ) -> some View {
+        Button {
+            HapticManager.shared.selection()
+            router.navigate(to: route)
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.themePrimary.opacity(0.12))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .heavy))
+                        .foregroundStyle(Color.brandGradient)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .heavy, design: .rounded))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                    Text(subtitle)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.themeBorder, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title), \(subtitle)")
+        .accessibilityIdentifier(identifier)
     }
 
     // MARK: - Recommendations (chip row, no card grid)

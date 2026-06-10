@@ -29,12 +29,17 @@ final class ChatViewModel: ObservableObject {
     private var sendInProgress = false
 
     init(
+        seed: ChatSeed? = nil,
         deepSeekService: DeepSeekService = DeepSeekService(),
         contextBuilder: ContextBuilder = ContextBuilder()
     ) {
         self.deepSeekService = deepSeekService
         self.contextBuilder = contextBuilder
         loadMessages()
+        // Pre-fill the input with the seed prompt only for a fresh conversation.
+        if let seed, messages.isEmpty {
+            inputText = seed.userVisiblePrompt
+        }
     }
 
     // MARK: - Public API

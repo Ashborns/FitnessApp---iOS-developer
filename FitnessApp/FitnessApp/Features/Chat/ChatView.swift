@@ -9,12 +9,20 @@ struct ChatView: View {
     /// then opening the camera. Used when ChatView is presented as a fullScreenCover.
     var onCameraRequested: ((ExerciseType?) -> Void)? = nil
 
-    @StateObject private var viewModel = ChatViewModel()
+    @StateObject private var viewModel: ChatViewModel
     @EnvironmentObject private var router: AppRouter
     @FocusState private var inputFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
     private let maxCharacters = 1000
+
+    /// - Parameters:
+    ///   - seed: Optional prompt used to pre-fill the input for a fresh conversation.
+    ///   - onCameraRequested: Optional callback invoked when an openCamera action is triggered.
+    init(seed: ChatSeed? = nil, onCameraRequested: ((ExerciseType?) -> Void)? = nil) {
+        self.onCameraRequested = onCameraRequested
+        _viewModel = StateObject(wrappedValue: ChatViewModel(seed: seed))
+    }
 
     var body: some View {
         NavigationStack {

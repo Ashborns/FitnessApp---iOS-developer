@@ -19,6 +19,19 @@ struct CameraFeedView: View {
     @State private var demoExercise: ExerciseType?
     @State private var completionSummary: WorkoutSummary?
 
+    // MARK: - Overlay Chrome Tuning (visual-only constants)
+
+    /// Opacity for translucent HUD chrome (pills/badges) layered over the camera
+    /// feed. Uses the `themeBackground` token as the base color.
+    private let chromeOpacity: Double = 0.55
+
+    /// Banner background opacity — kept ≥0.80 so feedback text stays readable
+    /// over a varying camera feed (Requirement 16.3).
+    private let bannerOpacity: Double = 0.85
+
+    /// Minimum tap target for overlay icon controls (Requirement 16.4 / HIG).
+    private let minTapTarget: CGFloat = 44
+
     var body: some View {
         ZStack {
             if viewModel.isAuthorized {
@@ -58,7 +71,7 @@ struct CameraFeedView: View {
         .animation(.easeInOut(duration: 0.25), value: demoExercise)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: completionSummary != nil)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black)
+        .background(Color.themeBackground)
         .task {
             await viewModel.requestPermission()
             if viewModel.isAuthorized {
@@ -112,13 +125,13 @@ struct CameraFeedView: View {
                 topBar
                 Spacer()
                 heroCounter
-                Spacer().frame(height: 16)
+                Spacer().frame(height: .spacingLarge)
                 feedbackBanner
                 if viewModel.mlModelUnavailable {
-                    Spacer().frame(height: 10)
+                    Spacer().frame(height: .spacingMedium)
                     mlFallbackBanner
                 }
-                Spacer().frame(height: 16)
+                Spacer().frame(height: .spacingLarge)
                 bottomControls
             }
         }
@@ -139,10 +152,10 @@ struct CameraFeedView: View {
 
     private var gradientOverlay: some View {
         VStack(spacing: 0) {
-            Color.black.opacity(0.5)
+            Color.themeBackground.opacity(0.5)
                 .frame(height: 110)
             Spacer()
-            Color.black.opacity(0.6)
+            Color.themeBackground.opacity(0.6)
                 .frame(height: 240)
         }
         .ignoresSafeArea()
@@ -152,21 +165,21 @@ struct CameraFeedView: View {
     // MARK: - Top Bar (status + timer + close)
 
     private var topBar: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: .spacingMedium) {
             // Detection badge — solid pill, no blur
             HStack(spacing: 5) {
                 Circle()
-                    .fill(viewModel.detectedPose != nil ? Color.themePrimary : Color.orange)
+                    .fill(viewModel.detectedPose != nil ? Color.themePrimary : Color.themeSecondary)
                     .frame(width: 7, height: 7)
                 Text(viewModel.detectedPose != nil ? "TRACKING" : "SCANNING")
                     .font(.system(size: 10, weight: .heavy))
                     .foregroundColor(.white)
                     .tracking(1.2)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color.black.opacity(0.5))
-            .cornerRadius(16)
+            .padding(.horizontal, .spacingMedium)
+            .padding(.vertical, .spacingSmall)
+            .background(Color.themeBackground.opacity(chromeOpacity))
+            .cornerRadius(.cornerRadiusSmall)
 
             // Timer — solid
             HStack(spacing: 5) {
@@ -178,10 +191,10 @@ struct CameraFeedView: View {
                     .foregroundColor(.white)
                     .monospacedDigit()
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color.black.opacity(0.5))
-            .cornerRadius(16)
+            .padding(.horizontal, .spacingMedium)
+            .padding(.vertical, .spacingSmall)
+            .background(Color.themeBackground.opacity(chromeOpacity))
+            .cornerRadius(.cornerRadiusSmall)
 
             Spacer()
 
@@ -192,8 +205,8 @@ struct CameraFeedView: View {
                 Image(systemName: viewModel.voiceEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(.white)
-                    .frame(width: 32, height: 32)
-                    .background(Color.black.opacity(0.5))
+                    .frame(width: minTapTarget, height: minTapTarget)
+                    .background(Color.themeBackground.opacity(chromeOpacity))
                     .clipShape(Circle())
             }
             .accessibilityLabel("Voice Coach")
@@ -207,8 +220,8 @@ struct CameraFeedView: View {
                 Image(systemName: "arrow.triangle.2.circlepath.camera")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(.white)
-                    .frame(width: 32, height: 32)
-                    .background(Color.black.opacity(0.5))
+                    .frame(width: minTapTarget, height: minTapTarget)
+                    .background(Color.themeBackground.opacity(chromeOpacity))
                     .clipShape(Circle())
             }
             .accessibilityLabel("Flip camera")
@@ -221,21 +234,21 @@ struct CameraFeedView: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(.white)
-                    .frame(width: 32, height: 32)
-                    .background(Color.black.opacity(0.5))
+                    .frame(width: minTapTarget, height: minTapTarget)
+                    .background(Color.themeBackground.opacity(chromeOpacity))
                     .clipShape(Circle())
             }
             .accessibilityLabel("Finish workout")
             .accessibilityIdentifier("camera-dismiss-btn")
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 14)
+        .padding(.horizontal, .spacingLarge)
+        .padding(.top, .spacingLarge)
     }
 
     // MARK: - Hero Counter
 
     private var heroCounter: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: .spacingSmall) {
             // Phase pill — solid
             HStack(spacing: 5) {
                 Image(systemName: viewModel.selectedExercise.icon)
@@ -245,10 +258,10 @@ struct CameraFeedView: View {
                     .tracking(1.5)
             }
             .foregroundColor(.themePrimary)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 5)
-            .background(Color.black.opacity(0.5))
-            .cornerRadius(16)
+            .padding(.horizontal, .spacingMedium)
+            .padding(.vertical, .spacingSmall)
+            .background(Color.themeBackground.opacity(chromeOpacity))
+            .cornerRadius(.cornerRadiusSmall)
 
             // Big number — solid color (no gradient, no shadow)
             Text("\(viewModel.repCount)")
@@ -291,10 +304,10 @@ struct CameraFeedView: View {
                 .font(.system(size: 8, weight: .regular))
                 .foregroundColor(.white.opacity(0.4))
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
-        .background(Color.white.opacity(0.1))
-        .cornerRadius(6)
+        .padding(.horizontal, .spacingMedium)
+        .padding(.vertical, .spacingSmall)
+        .background(Color.themeBackground.opacity(chromeOpacity))
+        .cornerRadius(.cornerRadiusSmall)
         .accessibilityIdentifier("camera-ml-label")
     }
 
@@ -305,9 +318,9 @@ struct CameraFeedView: View {
     private var frameWarningBorder: some View {
         ZStack {
             // Outer pulsing border
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: .cornerRadiusSmall)
                 .stroke(warningColor, lineWidth: 3)
-                .padding(12)
+                .padding(.spacingMedium)
                 .opacity(0.8)
 
             // Warning icon + text at top
@@ -319,11 +332,11 @@ struct CameraFeedView: View {
                         .font(.system(size: 11, weight: .bold))
                 }
                 .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(warningColor.opacity(0.7))
-                .cornerRadius(8)
-                .padding(.top, 20)
+                .padding(.horizontal, .spacingMedium)
+                .padding(.vertical, .spacingSmall)
+                .background(warningColor.opacity(0.85))
+                .cornerRadius(.cornerRadiusSmall)
+                .padding(.top, .spacingExtraLarge)
                 Spacer()
             }
         }
@@ -356,22 +369,21 @@ struct CameraFeedView: View {
             if !viewModel.frameCheckResult.isReady {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 11))
-                    .foregroundColor(.orange)
+                    .foregroundColor(.themeSecondary)
             }
             Text(viewModel.feedback)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.white)
                 .multilineTextAlignment(.center)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(
-            viewModel.frameCheckResult.isReady
-                ? Color.black.opacity(0.5)
-                : Color.orange.opacity(0.3)
-        )
-        .cornerRadius(10)
-        .padding(.horizontal, 20)
+        .padding(.horizontal, .spacingLarge)
+        .padding(.vertical, .spacingMedium)
+        // Background opacity kept ≥0.80 (white text on near-black surface keeps
+        // contrast well above 4.5:1) so feedback stays readable over any camera
+        // feed (Requirement 16.3). The amber warning glyph signals "not ready".
+        .background(Color.themeBackground.opacity(bannerOpacity))
+        .cornerRadius(.cornerRadiusSmall)
+        .padding(.horizontal, .spacingExtraLarge)
         .accessibilityIdentifier("camera-instruction-label")
     }
 
@@ -384,51 +396,42 @@ struct CameraFeedView: View {
         HStack(spacing: 6) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 11))
-                .foregroundColor(.orange)
+                .foregroundColor(.themeSecondary)
             Text("Squat ML model unavailable — using fallback detection")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.white)
                 .multilineTextAlignment(.center)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(Color.orange.opacity(0.3))
-        .cornerRadius(10)
-        .padding(.horizontal, 20)
+        .padding(.horizontal, .spacingLarge)
+        .padding(.vertical, .spacingMedium)
+        .background(Color.themeBackground.opacity(bannerOpacity))
+        .cornerRadius(.cornerRadiusSmall)
+        .padding(.horizontal, .spacingExtraLarge)
         .accessibilityIdentifier("camera-ml-fallback-banner")
     }
 
     // MARK: - Bottom Controls
 
     private var bottomControls: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: .spacingMedium) {
             exercisePicker
 
-            Button {
-                resetWorkout()
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.system(size: 12, weight: .bold))
-                    Text("Reset")
-                        .font(.system(size: 13, weight: .bold))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(Color.black.opacity(0.5))
-                .cornerRadius(12)
-            }
-            .accessibilityLabel("Reset workout")
-            .accessibilityIdentifier("camera-reset-btn")
-            .padding(.horizontal, 14)
+            // Reset control from Component_Library (≥44×44 tap target,
+            // non-empty accessibility label) — Requirement 16.4.
+            SecondaryButton(
+                title: "Reset",
+                label: "Reset workout",
+                identifier: "camera-reset-btn",
+                action: { resetWorkout() }
+            )
+            .padding(.horizontal, .spacingLarge)
         }
-        .padding(.bottom, 24)
+        .padding(.bottom, .spacingExtraLarge)
     }
 
     private var exercisePicker: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: .spacingMedium) {
                 ForEach(ExerciseType.allCases) { exercise in
                     let isSelected = viewModel.selectedExercise == exercise
                     Button {
@@ -444,15 +447,18 @@ struct CameraFeedView: View {
                                 .lineLimit(1)
                         }
                         .frame(width: 70, height: 60)
-                        .background(isSelected ? Color.themePrimary : Color.black.opacity(0.5))
-                        .cornerRadius(12)
+                        .background(isSelected ? Color.themePrimary : Color.themeBackground.opacity(chromeOpacity))
+                        .cornerRadius(.cornerRadiusSmall)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Select \(exercise.displayName)")
+                    .accessibleLabel(
+                        "Select \(exercise.displayName)",
+                        fallback: "Select exercise"
+                    )
                     .accessibilityIdentifier("camera-exercise-\(exercise.rawValue)")
                 }
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, .spacingLarge)
         }
     }
 
@@ -502,27 +508,23 @@ struct CameraFeedView: View {
     @ViewBuilder
     private var permissionDeniedContent: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.07, green: 0.07, blue: 0.12), Color(red: 0.12, green: 0.12, blue: 0.20)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            Color.themeBackground
+                .ignoresSafeArea()
 
-            VStack(spacing: 24) {
+            VStack(spacing: .spacingExtraLarge) {
                 Spacer()
 
                 ZStack {
                     Circle()
-                        .fill(Color.white.opacity(0.08))
+                        .fill(Color.themeSurfaceElevated)
                         .frame(width: 120, height: 120)
                     Image(systemName: "camera.fill")
                         .font(.system(size: 48))
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(.themePrimary)
                 }
                 .accessibilityHidden(true)
 
-                VStack(spacing: 12) {
+                VStack(spacing: .spacingMedium) {
                     Text("Camera Access Required")
                         .font(.title2)
                         .fontWeight(.bold)
@@ -532,39 +534,28 @@ struct CameraFeedView: View {
                         .font(.body)
                         .foregroundColor(.white.opacity(0.7))
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
+                        .padding(.horizontal, .spacingExtraLarge)
                 }
 
                 Spacer()
 
-                VStack(spacing: 12) {
-                    Button {
-                        openSettings()
-                    } label: {
-                        HStack {
-                            Image(systemName: "gear")
-                            Text("Open Settings")
-                                .fontWeight(.semibold)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.white)
-                        .foregroundColor(.black)
-                        .cornerRadius(14)
-                    }
-                    .accessibilityIdentifier("camera-open-settings-btn")
+                VStack(spacing: .spacingMedium) {
+                    PrimaryButton(
+                        title: "Open Settings",
+                        label: "Open Settings",
+                        identifier: "camera-open-settings-btn",
+                        action: { openSettings() }
+                    )
 
-                    Button {
-                        dismiss()
-                    } label: {
-                        Text("Not Now")
-                            .fontWeight(.medium)
-                            .foregroundColor(.white.opacity(0.7))
-                    }
-                    .accessibilityIdentifier("camera-permission-dismiss-btn")
+                    SecondaryButton(
+                        title: "Not Now",
+                        label: "Not now",
+                        identifier: "camera-permission-dismiss-btn",
+                        action: { dismiss() }
+                    )
                 }
-                .padding(.horizontal, 32)
-                .padding(.bottom, 48)
+                .padding(.horizontal, .spacingExtraLarge)
+                .padding(.bottom, .spacingExtraLarge)
             }
         }
     }
