@@ -114,6 +114,10 @@ struct CameraFeedView: View {
                 heroCounter
                 Spacer().frame(height: 16)
                 feedbackBanner
+                if viewModel.mlModelUnavailable {
+                    Spacer().frame(height: 10)
+                    mlFallbackBanner
+                }
                 Spacer().frame(height: 16)
                 bottomControls
             }
@@ -180,6 +184,21 @@ struct CameraFeedView: View {
             .cornerRadius(16)
 
             Spacer()
+
+            // Voice coach mute toggle — solid circle
+            Button {
+                viewModel.toggleVoice()
+            } label: {
+                Image(systemName: viewModel.voiceEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: 32, height: 32)
+                    .background(Color.black.opacity(0.5))
+                    .clipShape(Circle())
+            }
+            .accessibilityLabel("Voice Coach")
+            .accessibilityValue(viewModel.voiceEnabled ? "On" : "Off")
+            .accessibilityIdentifier("camera-voice-toggle-btn")
 
             // Flip camera — solid circle
             Button {
@@ -354,6 +373,29 @@ struct CameraFeedView: View {
         .cornerRadius(10)
         .padding(.horizontal, 20)
         .accessibilityIdentifier("camera-instruction-label")
+    }
+
+    // MARK: - ML Fallback Banner (R8.1)
+
+    /// Shown when the Squat FlexFitClassifier model failed to load and the
+    /// rule-based fallback detector is being used instead. Reuses the
+    /// `feedbackBanner` visual style.
+    private var mlFallbackBanner: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 11))
+                .foregroundColor(.orange)
+            Text("Squat ML model unavailable — using fallback detection")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Color.orange.opacity(0.3))
+        .cornerRadius(10)
+        .padding(.horizontal, 20)
+        .accessibilityIdentifier("camera-ml-fallback-banner")
     }
 
     // MARK: - Bottom Controls

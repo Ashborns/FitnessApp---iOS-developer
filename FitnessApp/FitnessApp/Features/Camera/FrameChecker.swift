@@ -8,14 +8,22 @@ import CoreGraphics
 /// to provide corrective feedback before counting reps.
 struct FrameChecker {
 
-    /// Minimum fraction of frame width the body should occupy (30%).
-    static let minBodyWidthFraction: CGFloat = 0.30
+    /// Minimum fraction of frame width the body should occupy (kept as a loose sanity bound).
+    static let minBodyWidthFraction: CGFloat = 0.08
 
-    /// Maximum fraction of frame width before body is considered too close (85%).
-    static let maxBodyWidthFraction: CGFloat = 0.85
+    /// Maximum fraction of frame width before body is considered too close.
+    static let maxBodyWidthFraction: CGFloat = 0.95
 
-    /// Maximum horizontal offset from center before body is "not centered" (20% of frame width).
-    static let maxCenterOffsetFraction: CGFloat = 0.20
+    /// Distance is judged primarily by vertical extent, which is the dominant and most
+    /// stable dimension for standing exercises in a portrait frame.
+    /// Minimum fraction of frame height the body should span before it's "too far".
+    static let minBodyHeightFraction: CGFloat = 0.35
+
+    /// Maximum fraction of frame height before the body is "too close".
+    static let maxBodyHeightFraction: CGFloat = 0.98
+
+    /// Maximum horizontal offset from center before body is "not centered" (28% of frame width).
+    static let maxCenterOffsetFraction: CGFloat = 0.28
 
     /// Minimum number of key joints required to consider a body "detected".
     static let minKeyJoints: Int = 4
@@ -67,20 +75,13 @@ struct FrameChecker {
 
     // MARK: - Configuration
 
-    /// Key joints that must be visible with high confidence for proper tracking.
-    private static let requiredJoints: [VNHumanBodyPoseObservation.JointName] = [
-        .leftShoulder, .rightShoulder,
-        .leftHip, .rightHip,
-        .leftKnee, .rightKnee,
-        .nose
-    ]
-
-    /// Joints used to compute the bounding box of the body.
+    /// Joints used to compute the bounding box of the body. Deliberately excludes the
+    /// elbows and wrists: during exercises like jumping jacks the arms swing widely, which
+    /// would make a wrist/elbow-based box jump around and cause false "too close" / clipping
+    /// readings. The core torso-and-legs joints give a stable distance estimate.
     private static let boundingJoints: [VNHumanBodyPoseObservation.JointName] = [
         .nose,
         .leftShoulder, .rightShoulder,
-        .leftElbow, .rightElbow,
-        .leftWrist, .rightWrist,
         .leftHip, .rightHip,
         .leftKnee, .rightKnee,
         .leftAnkle, .rightAnkle
@@ -101,11 +102,12 @@ struct FrameChecker {
             return .noBodyDetected
         }
 
-        // Check: are enough key joints visible?
-        let visibleKeyJoints = requiredJoints.filter { joint in
-            points[joint]?.confidence ?? 0 >= 0.2
-        }
-        if visibleKeyJoints.count < minKeyJoints {
+        // Check: is a body present at all? Be lenient here — if *any* reasonable set of joints
+        // is visible we treat the body as detected and let the distance / centering checks give
+        // actionable guidance, instead of bailing out with "no body" when only part of the body
+        // (e.g. upper body) is in view.
+        let confidentJointCount = points.values.filter { $0.confidence >= 0.15 }.count
+        if confidentJointCount < minKeyJoints {
             return .noBodyDetected
         }
 
@@ -117,7 +119,7 @@ struct FrameChecker {
         var havePoint = false
 
         for joint in boundingJoints {
-            guard let point = points[joint], point.confidence >= 0.2 else { continue }
+            guard let point = points[joint], point.confidence >= 0.15 else { continue }
             let loc = point.location
             minX = min(minX, loc.x)
             maxX = max(maxX, loc.x)
@@ -134,28 +136,28 @@ struct FrameChecker {
         let bodyHeight = maxY - minY
         let centerX = (minX + maxX) / 2
 
-        // Check: partially out of frame (joints near edges with low confidence)
-        let edgeThreshold: CGFloat = 0.05
+        // Check: partially out of frame (body clipped at an edge).
+        let edgeThreshold: CGFloat = 0.03
         let nearLeftEdge = minX < edgeThreshold
         let nearRightEdge = maxX > (1.0 - edgeThreshold)
         let nearTopEdge = maxY > (1.0 - edgeThreshold)  // head
         let nearBottomEdge = minY < edgeThreshold       // feet
 
-        // If body is clipped on any edge, it's partially out of frame
+        // Only treat clipping as "out of frame" when the body is clearly large (i.e. genuinely
+        // cut off), not merely small and far away (handled by the distance check below).
         if nearLeftEdge || nearRightEdge || nearTopEdge || nearBottomEdge {
-            // Only trigger if the body width suggests it's actually clipped vs just small
-            if bodyWidth > 0.15 {
+            if bodyHeight > 0.75 {
                 return .partiallyOutOfFrame
             }
         }
 
-        // Check: too far (body is too small in frame)
-        if bodyWidth < minBodyWidthFraction {
+        // Distance is judged primarily by the body's vertical extent — the dominant, most
+        // stable dimension for a standing person in a portrait frame. (Horizontal width is
+        // unreliable: a standing body is far taller than wide and arm pose changes it.)
+        if bodyHeight < minBodyHeightFraction {
             return .tooFar
         }
-
-        // Check: too close (body fills too much of frame)
-        if bodyWidth > maxBodyWidthFraction || bodyHeight > 0.95 {
+        if bodyHeight > maxBodyHeightFraction || bodyWidth > maxBodyWidthFraction {
             return .tooClose
         }
 

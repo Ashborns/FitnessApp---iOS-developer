@@ -23,6 +23,15 @@ final class CameraViewModel: ObservableObject {
     // Frame position check result
     @Published var frameCheckResult: FrameChecker.Result = .noBodyDetected
 
+    // Voice coaching preference — persisted in UserDefaults under "voiceCoachEnabled".
+    // Defaults to enabled when no value has been stored previously.
+    @Published var voiceEnabled: Bool = UserDefaults.standard
+        .object(forKey: "voiceCoachEnabled") as? Bool ?? true
+
+    // Drives the R8.1 fallback banner: true when Squats is active but the
+    // FlexFitClassifier model failed to load (rule-based detector is used instead).
+    @Published var mlModelUnavailable: Bool = false
+
     // Workout summary (per exercise totals — saved on dismiss)
     @Published private(set) var sessionSummary: [ExerciseType: Int] = [:]
     @Published var workoutStartedAt: Date = Date()
@@ -31,6 +40,65 @@ final class CameraViewModel: ObservableObject {
 
     private var detectorState = ExerciseDetector.State.initial
     private let detector = ExerciseDetector()
+
+    /// Pure-logic rep counter that derives squat reps from FlexFitClassifier
+    /// `(label, confidence)` predictions when the ML model is the source of truth.
+    private var squatRepCounter = SquatRepCounter()
+
+    /// Frame-position smoothing. Raw `FrameChecker` results can flip between adjacent
+    /// states on a single jittery frame near a threshold, which would spam the on-screen
+    /// guidance ("step closer" / "move back"). We smooth with a short sliding-window
+    /// majority vote: the committed result is whichever state dominates the last few
+    /// evaluations. This removes flicker without ever deadlocking on a stale state.
+    private var frameResultHistory: [FrameChecker.Result] = []
+    private static let frameResultWindow = 5
+
+    /// Returns a debounced frame-position result via a majority vote over the most recent
+    /// evaluations. Ties resolve in favor of the most recent value, keeping it responsive.
+    private func stabilizedFrameResult(_ raw: FrameChecker.Result) -> FrameChecker.Result {
+        frameResultHistory.append(raw)
+        if frameResultHistory.count > Self.frameResultWindow {
+            frameResultHistory.removeFirst()
+        }
+
+        var best = raw
+        var bestCount = 0
+        // Iterate newest → oldest so that, with a strict `>`, ties favor the most recent state.
+        for candidate in frameResultHistory.reversed() {
+            let count = frameResultHistory.reduce(0) { $0 + ($1 == candidate ? 1 : 0) }
+            if count > bestCount {
+                bestCount = count
+                best = candidate
+            }
+        }
+        return best
+    }
+
+    /// The most recently spoken form-correction message (R5.4). Used so a
+    /// `formCorrection` CoachingEvent is only requested when the current feedback
+    /// differs from the last one spoken. `VoiceCoach` applies its own debounce /
+    /// spacing gates on top of this; this only suppresses identical back-to-back
+    /// requests originating from the same banner message.
+    private var lastSpokenFormCorrection: String?
+
+    /// The exact set of form-correction messages `ExerciseDetector` can produce
+    /// (see `formFeedbackMessage`). Only these are spoken as `formCorrection`
+    /// CoachingEvents — rep feedback ("N squats — keep going!"), initial coaching
+    /// prompts, and frame-position guidance are intentionally excluded.
+    private static let formCorrectionMessages: Set<String> = [
+        "Raise arms higher",
+        "Spread legs wider",
+        "Go deeper — bend knees more",
+        "Stand fully upright",
+        "Lift knee higher",
+        "Raise arms fully overhead",
+        "Bend further — reach for your toes"
+    ]
+
+    /// `true` when `message` is a recognized, non-empty form-correction string.
+    private func isFormCorrection(_ message: String) -> Bool {
+        !message.isEmpty && Self.formCorrectionMessages.contains(message)
+    }
 
     // MARK: - Session
 
@@ -52,23 +120,46 @@ final class CameraViewModel: ObservableObject {
                 // Feed to ML classifier (sliding window)
                 ExerciseClassifierManager.shared.addPose(observation)
 
-                // Frame position check — higher priority than rep counting
-                let frameResult = FrameChecker.evaluate(
+                // Frame position check — higher priority than rep counting.
+                // Smoothed over a few frames so the guidance message doesn't flicker.
+                let rawFrameResult = FrameChecker.evaluate(
                     observation: observation,
                     frameSize: CGSize(width: 720, height: 1280)
                 )
+                let frameResult = self.stabilizedFrameResult(rawFrameResult)
                 self.frameCheckResult = frameResult
 
                 if frameResult.isReady {
-                    // Rule-based rep counting (primary)
-                    self.detector.process(
-                        observation: observation,
-                        exercise: self.selectedExercise,
-                        state: &self.detectorState
-                    )
-                    self.repCount = self.detectorState.repCount
-                    self.phase = self.detectorState.phase
-                    self.feedback = self.detectorState.feedback
+                    if self.selectedExercise == .squats
+                        && FlexFitClassifierManager.shared.isModelLoaded {
+                        // ML path — FlexFitClassifier is the source of truth for Squats.
+                        self.mlModelUnavailable = false
+                        FlexFitClassifierManager.shared.addPose(observation)
+                        let delta = self.squatRepCounter.consume(
+                            label: FlexFitClassifierManager.shared.squatLabel,
+                            confidence: FlexFitClassifierManager.shared.squatConfidence
+                        )
+                        if delta > 0 {
+                            self.repCount = self.squatRepCounter.repCount
+                            self.phase = "Squat"
+                        }
+                    } else {
+                        // Squats with the model unavailable falls back to the
+                        // rule-based detector and surfaces the R8.1 banner.
+                        if self.selectedExercise == .squats {
+                            self.mlModelUnavailable = true
+                        }
+
+                        // Rule-based rep counting (primary path for non-Squats exercises).
+                        self.detector.process(
+                            observation: observation,
+                            exercise: self.selectedExercise,
+                            state: &self.detectorState
+                        )
+                        self.repCount = self.detectorState.repCount
+                        self.phase = self.detectorState.phase
+                        self.feedback = self.detectorState.feedback
+                    }
                 } else {
                     // Override feedback with position guidance
                     self.feedback = frameResult.feedbackMessage
@@ -79,9 +170,21 @@ final class CameraViewModel: ObservableObject {
                 if self.repCount > prevCount {
                     if self.repCount % 10 == 0 {
                         HapticManager.shared.milestone()
+                        VoiceCoach.shared.speak(.milestone(reps: self.repCount))
                     } else {
                         HapticManager.shared.repCounted()
+                        VoiceCoach.shared.speak(.repAnnouncement(count: self.repCount))
                     }
+                }
+
+                // Voice form correction (R5.4): only speak when the current feedback
+                // is a recognized form-correction message AND it differs from the
+                // most recently spoken correction. VoiceCoach applies its own mute /
+                // debounce / spacing gates on top of this.
+                if self.feedback != self.lastSpokenFormCorrection,
+                   self.isFormCorrection(self.feedback) {
+                    VoiceCoach.shared.speak(.formCorrection(message: self.feedback))
+                    self.lastSpokenFormCorrection = self.feedback
                 }
             }
         }
@@ -107,6 +210,21 @@ final class CameraViewModel: ObservableObject {
         frameCheckResult = .noBodyDetected
         // Clear ML classifier sliding window when switching exercises
         ExerciseClassifierManager.shared.reset()
+        // Reset squat phase (R3.6) — keep committed total, just drop the in-progress phase
+        squatRepCounter.resetPhase()
+        // Announce the newly selected exercise (R5.6 / R5.8)
+        VoiceCoach.shared.speak(.exerciseSwitch(exercise: exercise.displayName))
+    }
+
+    /// Toggle the voice-coaching preference (R6.2). Persists the new value to
+    /// UserDefaults under "voiceCoachEnabled" and silences any in-flight speech
+    /// immediately when turning OFF (R6.3).
+    func toggleVoice() {
+        voiceEnabled.toggle()
+        UserDefaults.standard.set(voiceEnabled, forKey: "voiceCoachEnabled")
+        if !voiceEnabled {
+            VoiceCoach.shared.stop()
+        }
     }
 
     /// Full reset — wipes session summary, counter, and starts a fresh workout.
@@ -119,6 +237,8 @@ final class CameraViewModel: ObservableObject {
         sessionSummary = [:]
         workoutStartedAt = Date()
         frameCheckResult = .noBodyDetected
+        // Fully reset squat rep counter — wipe phase and committed count (R3.5)
+        squatRepCounter.resetAll()
     }
 
     /// Commit the current exercise's rep count into the session summary.
@@ -138,6 +258,9 @@ final class CameraViewModel: ObservableObject {
         guard totalReps > 0 else {
             return WorkoutSummary(totalReps: 0, totalCalories: 0, durationMinutes: 0, breakdown: [:])
         }
+
+        // Announce workout completion (R5.7) — only when reps were actually performed.
+        VoiceCoach.shared.speak(.workoutEnd(totalReps: totalReps))
 
         let durationSeconds = Date().timeIntervalSince(workoutStartedAt)
         let durationMinutes = durationSeconds / 60.0
@@ -219,6 +342,10 @@ final class CameraViewModel: ObservableObject {
         let position = cameraPosition
         // Start workout duration timer when camera actually opens
         workoutStartedAt = Date()
+        // Announce workout start (R5.1) — gated on the voice preference per task spec.
+        if voiceEnabled {
+            VoiceCoach.shared.speak(.workoutStart(exercise: selectedExercise.displayName))
+        }
         sessionQueue.async { [weak self] in
             guard let self else { return }
             if self.session.inputs.isEmpty {
@@ -234,6 +361,8 @@ final class CameraViewModel: ObservableObject {
     }
 
     func stopSession() {
+        // Release the shared audio session so other apps regain audio (R7.6).
+        VoiceCoach.shared.deactivateSession()
         sessionQueue.async { [weak self] in
             guard let self else { return }
             if self.session.isRunning {
